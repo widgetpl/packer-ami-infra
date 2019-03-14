@@ -1,0 +1,96 @@
+{
+  "variables": {
+    "aws_access_key": "{{env `AWS_ACCESS_KEY_ID`}}",
+    "aws_secret_key": "{{env `AWS_SECRET_ACCESS_KEY`}}",
+    "eu_central_1_ami": "ami-090f10efc254eaf55",
+    "ami_name": "internal tools multipurpose ami",
+    "ssh_username": "ubuntu",
+    "docker_ebs_name": "xvdh",
+    "container_data_ebs_name": "xvdi",
+    "log_ebs_name": "xvdj"
+  },
+  "builders": [
+    {
+      "name": "{{user `ami_name`}}",
+      "type": "amazon-ebs",
+      "access_key": "{{user `aws_access_key`}}",
+      "secret_key": "{{user `aws_secret_key`}}",
+      "region": "eu-central-1",
+      "vpc_id": "",
+      "subnet_id": "",
+      "source_ami": "{{user `eu_central_1_ami`}}",
+      "instance_type": "t2.micro",
+      "ssh_username": "{{user `ssh_username`}}",
+      "ssh_timeout": "5m",
+      "ami_name": "{{user `ami_name`}} {{timestamp}}",
+      "ami_description": "{{user `ami_name`}}",
+      "run_tags": {
+        "ami-create": "{{user `ami_name`}}"
+      },
+      "tags": {
+        "Name": "Packer Builder - {{user `ami_name`}}",
+        "project": "Internal Tools",
+        "ami": "{{user `ami_name`}}"
+      },
+      "run_volume_tags": {
+        "Name": "Packer Builder - {{user `ami_name`}}",
+        "Project": "Internal Tools"
+      },
+      "launch_block_device_mappings": [
+        {
+          "device_name": "{{user `docker_ebs_name`}}",
+          "volume_size": 20,
+          "volume_type": "gp2",
+          "delete_on_termination": true
+        },
+        {
+          "device_name": "{{user `container_data_ebs_name`}}",
+          "volume_size": 50,
+          "volume_type": "gp2",
+          "delete_on_termination": true
+        },
+        {
+          "device_name": "{{user `log_ebs_name`}}",
+          "volume_size": 10,
+          "volume_type": "gp2",
+          "delete_on_termination": true
+        }
+      ]
+    }
+  ],
+  "provisioners": [
+    {
+      "type": "shell",
+      "script": "devices_setup.sh",
+      "environment_vars": [
+        "DOCKER_EBS_NAME={{user `docker_ebs_name`}}",
+        "CONTAINER_DATA_EBS_NAME={{user `container_data_ebs_name`}}",
+        "LOG_EBS_NAME={{user `log_ebs_name`}}"
+      ]
+    },
+    {
+      "type": "shell",
+      "script": "docker_install.sh"
+    },
+    {
+      "type": "file",
+      "source": "jenkins.yaml",
+      "destination": "/var/container_data/jenkins.yaml"
+    },
+    {
+      "type": "file",
+      "source": ".env",
+      "destination": "/var/container_data/.env"
+    },
+    {
+      "type": "shell",
+      "script": "pull_images.sh",
+      "environment_vars": [
+        "JENKINS_VERSION={{user `jenkins_version`}}",
+        "NEXUS_VERSION={{user `nexus_version`}}",
+        "SONAR_VERSION={{user `sonar_version`}}",
+        "GITLAB_VERSION={{user `gitlab_version`}}"
+      ]
+    }
+  ]
+}

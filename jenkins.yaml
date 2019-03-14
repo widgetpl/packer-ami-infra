@@ -1,0 +1,9 @@
+jenkins-master:
+  image: jenkins/jenkins:${JENKINS_VERSION}
+  environment:
+    JAVA_OPTS: "-Djava.awt.headless=true"
+  ports:
+    - "50000:50000"
+    - "8080:8080"
+  volumes:
+    - /var/container_data/jenkins:/var/jenkins_home
